@@ -1,0 +1,27 @@
+# Scrape intervals keep this starter responsive without excessive polling.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alert rules are evaluated locally by Prometheus; no Alertmanager is required
+# to view Inactive, Pending, and Firing states in the Prometheus UI.
+rule_files:
+  - /etc/prometheus/rules/flask-alerts.yml
+  - /etc/prometheus/rules/flask-slo.yml
+
+# Docker DNS reaches Alertmanager on its container port, not host localhost.
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: flask-api
+    metrics_path: /metrics
+    static_configs:
+      # Compose service names resolve within the stack's private network.
+      - targets: ["api:8000"]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

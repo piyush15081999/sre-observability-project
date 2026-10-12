@@ -1,0 +1,18 @@
+# All notifications remain on the private Docker Compose network.
+route:
+  receiver: local-webhook
+  group_by: [alertname, job, service]
+  # Wait briefly to combine alerts in a new group before the first notification.
+  group_wait: 10s
+  # Check for changed groups (including resolutions) once per minute.
+  group_interval: 1m
+  # Remind about unchanged firing groups every ten minutes.
+  repeat_interval: 10m
+
+receivers:
+  - name: local-webhook
+    webhook_configs:
+      - url: http://webhook-receiver:8080/webhook
+        send_resolved: true
+        http_config:
+          follow_redirects: false

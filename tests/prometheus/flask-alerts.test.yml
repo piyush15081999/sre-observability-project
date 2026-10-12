@@ -1,0 +1,80 @@
+# Synthetic samples verify alert timing and traffic guards without live errors.
+rule_files:
+  - ../../monitoring/prometheus/rules/flask-alerts.yml
+evaluation_interval: 15s
+tests:
+  - name: sustained-errors-pending-then-firing
+    interval: 15s
+    input_series:
+      - series: 'flask_http_requests_total{job="flask-api",endpoint="/api/orders",method="GET",status="200"}'
+        values: '0+9x28'
+      - series: 'flask_http_requests_total{job="flask-api",endpoint="/api/error",method="GET",status="500"}'
+        values: '0+1x28'
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="FlaskHighErrorRate",alertstate="pending"}'
+        eval_time: 4m
+        exp_samples:
+          - labels: 'ALERTS{alertname="FlaskHighErrorRate",alertstate="pending",job="flask-api",service="flask-api",severity="warning"}'
+            value: 1
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: FlaskHighErrorRate
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: FlaskHighErrorRate
+        exp_alerts:
+          - exp_labels:
+              job: flask-api
+              service: flask-api
+              severity: warning
+            exp_annotations:
+              summary: "Flask API 5xx ratio exceeds 5%"
+              description: "Job flask-api has a 5xx ratio of 10% over the last 5 minutes, with at least 20 eligible requests and recent request activity, sustained for 5 minutes. Excludes /health and /metrics. Inspect affected endpoints and API logs; see the README runbook."
+  - name: stopped-traffic-resets-pending
+    interval: 15s
+    input_series:
+      - series: 'flask_http_requests_total{job="flask-api",endpoint="/api/orders",method="GET",status="200"}'
+        values: '0+9x16 144+0x24'
+      - series: 'flask_http_requests_total{job="flask-api",endpoint="/api/error",method="GET",status="500"}'
+        values: '0+1x16 16+0x24'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: FlaskHighErrorRate
+        exp_alerts: []
+    promql_expr_test:
+      - expr: 'ALERTS{alertname="FlaskHighErrorRate",alertstate="pending"}'
+        eval_time: 6m
+        exp_samples: []
+  - name: insufficient-traffic
+    interval: 15s
+    input_series:
+      - series: 'flask_http_requests_total{job="flask-api",endpoint="/api/error",method="GET",status="500"}'
+        values: '0+0.1x40'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: FlaskHighErrorRate
+        exp_alerts: []
+  - name: exactly-five-percent-is-not-above-threshold
+    interval: 15s
+    input_series:
+      - series: 'flask_http_requests_total{job="flask-api",endpoint="/api/orders",method="GET",status="200"}'
+        values: '0+19x40'
+      - series: 'flask_http_requests_total{job="flask-api",endpoint="/api/error",method="GET",status="500"}'
+        values: '0+1x40'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: FlaskHighErrorRate
+        exp_alerts: []
+  - name: exclude-health-and-metrics-errors
+    interval: 15s
+    input_series:
+      - series: 'flask_http_requests_total{job="flask-api",endpoint="/api/orders",method="GET",status="200"}'
+        values: '0+10x40'
+      - series: 'flask_http_requests_total{job="flask-api",endpoint="/health",method="GET",status="500"}'
+        values: '0+100x40'
+      - series: 'flask_http_requests_total{job="flask-api",endpoint="/metrics",method="GET",status="500"}'
+        values: '0+100x40'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: FlaskHighErrorRate
+        exp_alerts: []

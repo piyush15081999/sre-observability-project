@@ -1,0 +1,38 @@
+# 99.9% request availability objective; a 30-day window permits 0.1% failures.
+# Readiness is conservative: it starts accumulating evidence when this rule is
+# installed, and requires 172800 valid 15-second observations in the window.
+# It cannot certify older history or requests invisible to Flask.
+groups:
+  - name: flask-availability-slo
+    interval: 15s
+    rules:
+      - record: flask:slo_observation_valid
+        expr: |
+          ((min(up{job="flask-api"}) == bool 1) * (max(time() - timestamp(up{job="flask-api"})) < bool 30) * (count(flask_http_requests_total{job="flask-api",endpoint!="/health",endpoint!="/metrics"}) > bool 0)) or vector(0)
+      - record: flask:slo_eligible_requests:increase30d
+        expr: |
+          sum(increase(flask_http_requests_total{job="flask-api",endpoint!="/health",endpoint!="/metrics"}[30d]))
+      - record: flask:slo_5xx_requests:increase30d
+        expr: |
+          sum(increase(flask_http_requests_total{job="flask-api",endpoint!="/health",endpoint!="/metrics",status=~"5.."}[30d])) or (0 * flask:slo_eligible_requests:increase30d)
+      - record: flask:slo_successful_requests:increase30d
+        expr: |
+          sum(increase(flask_http_requests_total{job="flask-api",endpoint!="/health",endpoint!="/metrics",status!~"5.."}[30d])) or (0 * flask:slo_eligible_requests:increase30d)
+      - record: flask:slo_error_budget_allowance:30d
+        expr: |
+          0.001 * flask:slo_eligible_requests:increase30d
+      - record: flask:slo_availability_percent:30d
+        expr: |
+          100 * flask:slo_successful_requests:increase30d / (flask:slo_eligible_requests:increase30d > 0)
+      - record: flask:slo_error_budget_consumed_percent:30d
+        expr: |
+          100 * flask:slo_5xx_requests:increase30d / (flask:slo_error_budget_allowance:30d > 0)
+      - record: flask:slo_error_budget_remaining_percent:30d
+        expr: |
+          100 - flask:slo_error_budget_consumed_percent:30d
+      - record: flask:slo_observation_coverage_percent:30d
+        expr: |
+          100 * count_over_time(flask:slo_observation_valid[30d]) / 172800
+      - record: flask:slo_window_ready
+        expr: |
+          (min_over_time(flask:slo_observation_valid[30d]) == bool 1) * (count_over_time(flask:slo_observation_valid[30d]) >= bool 172800) * (flask:slo_observation_valid == bool 1) * ((count(present_over_time(flask:slo_observation_valid[1m] offset 30d)) > bool 0) or vector(0))

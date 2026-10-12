@@ -1,0 +1,351 @@
+{
+  "rule_files": [],
+  "evaluation_interval": "15s",
+  "tests": [
+    {
+      "name": "calculations-and-excluded-routes",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "flask_http_requests_total{job=\"flask-api\",endpoint=\"/api/orders\",method=\"GET\",status=\"200\"}",
+          "values": "0 950 1900"
+        },
+        {
+          "series": "flask_http_requests_total{job=\"flask-api\",endpoint=\"/api/error\",method=\"GET\",status=\"500\"}",
+          "values": "0 50 100"
+        },
+        {
+          "series": "flask_http_requests_total{job=\"flask-api\",endpoint=\"/health\",method=\"GET\",status=\"500\"}",
+          "values": "0 10000 20000"
+        },
+        {
+          "series": "flask_http_requests_total{job=\"flask-api\",endpoint=\"/metrics\",method=\"GET\",status=\"500\"}",
+          "values": "0 10000 20000"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "(sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 2000
+            }
+          ]
+        },
+        {
+          "expr": "(sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status=~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 100
+            }
+          ]
+        },
+        {
+          "expr": "(sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status!~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 1900
+            }
+          ]
+        },
+        {
+          "expr": "(0.001 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "expr": "(100 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status!~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))) / ((sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))) > 0))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 95
+            }
+          ]
+        },
+        {
+          "expr": "(100 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status=~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))) / ((0.001 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))) > 0))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 5000
+            }
+          ]
+        },
+        {
+          "expr": "(100 - (100 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status=~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))) / ((0.001 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))) > 0)))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": -4900
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "no-5xx-series-is-zero-not-missing",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "flask_http_requests_total{job=\"flask-api\",endpoint=\"/api/orders\",method=\"GET\",status=\"200\"}",
+          "values": "0 50 100"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "(sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 100
+            }
+          ]
+        },
+        {
+          "expr": "(sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status=~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "(100 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status!~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))) / ((sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))) > 0))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 100
+            }
+          ]
+        },
+        {
+          "expr": "(100 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status=~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))) / ((0.001 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))) > 0))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "(100 - (100 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status=~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))) / ((0.001 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))) > 0)))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "all-errors-no-good-series",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "flask_http_requests_total{job=\"flask-api\",endpoint=\"/api/error\",method=\"GET\",status=\"500\"}",
+          "values": "0 50 100"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "(sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status!~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "(100 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status!~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))) / ((sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))) > 0))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "(100 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status=~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))) / ((0.001 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))) > 0))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 100000
+            }
+          ]
+        },
+        {
+          "expr": "(100 - (100 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status=~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))) / ((0.001 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))) > 0)))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": -99900
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "zero-traffic-is-not-100-percent",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "flask_http_requests_total{job=\"flask-api\",endpoint=\"/api/orders\",method=\"GET\",status=\"200\"}",
+          "values": "0 0 0"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "(sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "(100 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status!~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))) / ((sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))) > 0))",
+          "eval_time": "2m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(100 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status=~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))) / ((0.001 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))) > 0))",
+          "eval_time": "2m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(100 - (100 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status=~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))) / ((0.001 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))) > 0)))",
+          "eval_time": "2m",
+          "exp_samples": []
+        }
+      ]
+    },
+    {
+      "name": "missing-data-is-not-zero",
+      "interval": "1m",
+      "input_series": [],
+      "promql_expr_test": [
+        {
+          "expr": "(sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))",
+          "eval_time": "2m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status=~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))))",
+          "eval_time": "2m",
+          "exp_samples": []
+        },
+        {
+          "expr": "(100 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status!~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))) / ((sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))) > 0))",
+          "eval_time": "2m",
+          "exp_samples": []
+        }
+      ]
+    },
+    {
+      "name": "counter-resets",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "flask_http_requests_total{job=\"flask-api\",endpoint=\"/api/orders\",method=\"GET\",status=\"200\"}",
+          "values": "0 100 5 105"
+        },
+        {
+          "series": "flask_http_requests_total{job=\"flask-api\",endpoint=\"/api/error\",method=\"GET\",status=\"500\"}",
+          "values": "0 10 1 11"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "(sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))",
+          "eval_time": "3m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 226
+            }
+          ]
+        },
+        {
+          "expr": "(sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status!~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))))",
+          "eval_time": "3m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 205
+            }
+          ]
+        },
+        {
+          "expr": "(sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status=~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d])))))",
+          "eval_time": "3m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 21
+            }
+          ]
+        },
+        {
+          "expr": "(100 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\",status!~\"5..\"}[30d])) or (0 * (sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))))) / ((sum(increase(flask_http_requests_total{job=\"flask-api\",endpoint!=\"/health\",endpoint!=\"/metrics\"}[30d]))) > 0))",
+          "eval_time": "3m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 90.70796460176992
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "partial-observation-history",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "flask:slo_observation_valid",
+          "values": "1 1 1"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "((min_over_time(flask:slo_observation_valid[30d]) == bool 1) * (count_over_time(flask:slo_observation_valid[30d]) >= bool 172800) * (flask:slo_observation_valid == bool 1))",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

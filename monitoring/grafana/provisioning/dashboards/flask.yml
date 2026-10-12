@@ -1,0 +1,15 @@
+# Load the dashboard JSON from the read-only Compose bind mount.
+apiVersion: 1
+
+providers:
+  - name: flask-service-overview
+    orgId: 1
+    folder: SRE
+    folderUid: sre
+    type: file
+    disableDeletion: false
+    allowUiUpdates: false
+    # Polling works reliably with Docker Desktop bind mounts on Windows.
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

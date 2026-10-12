@@ -1,0 +1,51 @@
+name: Project checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Disposable CI configuration; no real credentials or repository secrets.
+      GRAFANA_ADMIN_USER: ci
+      GRAFANA_ADMIN_PASSWORD: ci-placeholder-not-a-real-secret
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # Install only on the ephemeral CI runner, never the contributor's machine.
+      - name: Install runtime dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Python tests and publication checks
+        run: |
+          python -B -m unittest discover -s tests -v
+          python -B scripts/check_project.py
+          docker compose config --quiet
+      - name: Validate Prometheus configuration and rules
+        run: |
+          docker run --rm --entrypoint promtool \
+            -v "$PWD/monitoring/prometheus:/etc/prometheus:ro" \
+            prom/prometheus:v3.2.1 check config /etc/prometheus/prometheus.yml
+      - name: Test alert and SLO expressions
+        run: |
+          docker run --rm --entrypoint promtool \
+            -v "$PWD/monitoring:/project/monitoring:ro" \
+            -v "$PWD/tests/prometheus:/project/tests/prometheus:ro" \
+            -w /project/tests/prometheus \
+            prom/prometheus:v3.2.1 test rules \
+            flask-alerts.test.yml flask-slo.test.yml flask-slo-history.test.yml
+      - name: Validate Alertmanager routing
+        run: |
+          docker run --rm --entrypoint amtool \
+            -v "$PWD/monitoring/alertmanager:/etc/alertmanager:ro" \
+            prom/alertmanager:v0.34.1 check-config /etc/alertmanager/alertmanager.yml

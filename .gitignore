@@ -1,0 +1,27 @@
+# Local secrets, virtual environments, and generated Python files.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.aws/
+.codex/
+.agents/
+secrets/
+*.log
+logs/
+artifacts/
+.DS_Store
+Thumbs.db
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+.idea/
+.vscode/

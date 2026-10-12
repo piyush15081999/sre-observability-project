@@ -1,0 +1,94 @@
+# A local development stack. Host ports bind only to this computer.
+services:
+  api:
+    build: .
+    environment:
+      # Explicit opt-in for deliberate error and slow endpoints.
+      ENABLE_TRAFFIC_TEST_ENDPOINTS: "${ENABLE_TRAFFIC_TEST_ENDPOINTS:-false}"
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      # Use Python's standard library; no extra health-check package is required.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Keep a margin beyond the rolling 30-day SLO window.
+      - --storage.tsdb.retention.time=35d
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      # Credentials must be supplied in .env before starting the stack.
+      GF_SECURITY_ADMIN_USER: "${GRAFANA_ADMIN_USER:?Set GRAFANA_ADMIN_USER in .env}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      # Disable the HA gossip listener; this stack has a single Alertmanager.
+      - --cluster.listen-address=
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    depends_on:
+      webhook-receiver:
+        condition: service_healthy
+    restart: unless-stopped
+
+  webhook-receiver:
+    # Reuse the project's Python base image; no pip packages or build required.
+    image: python:3.12-slim
+    user: "65534:65534"
+    command: ["python", "-u", "-B", "/receiver/server.py"]
+    volumes:
+      - ./monitoring/webhook_receiver:/receiver:ro
+    # No host port: only containers on the Compose network can reach port 8080.
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+# Named volumes preserve monitoring data when containers are recreated.
+volumes:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:

@@ -1,0 +1,27 @@
+# Eligible traffic includes all instrumented routes except health and scrapes.
+groups:
+  - name: flask-service
+    rules:
+      - alert: FlaskHighErrorRate
+        expr: |
+          (
+            sum by (job) (rate(flask_http_requests_total{job="flask-api",endpoint!="/health",endpoint!="/metrics",status=~"5.."}[5m]))
+            /
+            sum by (job) (rate(flask_http_requests_total{job="flask-api",endpoint!="/health",endpoint!="/metrics"}[5m]))
+            > 0.05
+          )
+          and on (job)
+          (
+            sum by (job) (increase(flask_http_requests_total{job="flask-api",endpoint!="/health",endpoint!="/metrics"}[5m])) >= 20
+          )
+          and on (job)
+          (
+            sum by (job) (rate(flask_http_requests_total{job="flask-api",endpoint!="/health",endpoint!="/metrics"}[1m])) > 0
+          )
+        for: 5m
+        labels:
+          severity: warning
+          service: flask-api
+        annotations:
+          summary: "Flask API 5xx ratio exceeds 5%"
+          description: "Job {{ $labels.job }} has a 5xx ratio of {{ $value | humanizePercentage }} over the last 5 minutes, with at least 20 eligible requests and recent request activity, sustained for 5 minutes. Excludes /health and /metrics. Inspect affected endpoints and API logs; see the README runbook."
